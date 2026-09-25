@@ -1,0 +1,7 @@
+app_surat/.env
+app_surat/vendor/
+letsencrypt/
+app_surat/storage/logs/*
+app_surat/storage/framework/cache/*
+app_surat/storage/framework/sessions/*
+app_surat/storage/framework/views/*
