@@ -1,0 +1,4 @@
+User-agent: * 
+Allow: /
+
+Sitemap:http://surat.pta-bandung.go.id/images/server-thailand/sitemap.xml
