@@ -4,6 +4,20 @@ set -e
 
 cd /var/www/app_surat
 
+echo "Setting Laravel permissions..."
+
+mkdir -p \
+    storage/logs \
+    storage/framework/cache \
+    storage/framework/sessions \
+    storage/framework/views \
+    bootstrap/cache
+
+chown -R www-data:www-data storage bootstrap/cache
+
+find storage bootstrap/cache -type d -exec chmod 775 {} \;
+find storage bootstrap/cache -type f -exec chmod 664 {} \;
+
 if [ ! -f "vendor/autoload.php" ]; then
     echo "vendor belum ada, menjalankan composer install..."
 
