@@ -536,58 +536,187 @@ class SuratkeluarbaruController extends Controller
         }
     }
 
-    public function kirim_pta($enc_id) {
+//     public function kirim_pta($enc_id) {
+//         try {
+//             $id = $this->enc_helper->decrypt($enc_id);
+//             $surat = SuratkeluarbaruModel::find($id);
+            
+//             if (!$surat->file) {
+//                 return redirect('/surat_keluar_baru')->with('error', 'Surat gagal dikirim : File surat harus dilampirkan');
+//             }
+
+//             $api_url = env('API_PTA_URL', '');
+//             $id_satker = env('ID_SATKER', '-');
+//             $nama_satker = env('NAMA_SATKER', '-');
+//             $api_key = env('API_SURAT_PTA', '-');
+
+//             $filename = public_path("dok\keluar\\".$surat->file);
+
+//             $response = Http::withHeaders([
+//                 'key'       => $api_key,
+//                 'id_satker' => $id_satker
+//             ])
+//             ->attach('file', fopen($filename, 'r'))
+//             ->post($api_url.'api/surat_masuk_satker', [
+//                 'no_surat'       => $surat->nomor_surat,
+//                 'dari'           => $nama_satker,
+//                 'tgl_surat'      => $surat->tanggal_surat,
+//                 'keterangan'     => $surat->keterangan,
+//                 'id_klasifikasi' => $surat->id_klasifikasi,
+//                 'klasifikasi'    => $surat->klasifikasi,
+//                 'sifat_surat'    => $surat->sifat_surat,
+//                 'isi_ringkas'    => $surat->isi_ringkas,
+//                 'tahun_anggaran' => $surat->tahun_anggaran,
+//             ])
+//             ->json();
+
+//             if ($response['success']) {
+//                 if ($surat->sifat_surat < 3) {
+//                     return redirect('/surat_keluar_baru')->with('status', 'Surat berhasil dikirim ke PTA');
+//                 } else {
+//                     return redirect('/surat_keluar_rhs_baru')->with('status', 'Surat berhasil dikirim ke PTA');
+//                 }
+//             } else {
+//                 if ($surat->sifat_surat < 3) {
+//                     return redirect('/surat_keluar_baru')->with('error', 'Surat gagal dikirim ke PTA : ' . $response['message']);
+//                 } else {
+//                     return redirect('/surat_keluar_rhs_baru')->with('error', 'Surat gagal dikirim ke PTA : ' . $response['message']);
+//                 }
+//             }
+//         } catch (\Exception $ex) {
+//             // dd($ex->getMessage());
+//             return redirect('/surat_keluar_baru')->with('error', 'Surat gagal dikirim ke PTA');
+//         }    
+// }
+
+    public function kirim_pta($enc_id)
+    {
         try {
             $id = $this->enc_helper->decrypt($enc_id);
             $surat = SuratkeluarbaruModel::find($id);
-            
+
+            if (!$surat) {
+                return redirect('/surat_keluar_baru')
+                    ->with('error', 'Surat tidak ditemukan.');
+            }
+
             if (!$surat->file) {
-                return redirect('/surat_keluar_baru')->with('error', 'Surat gagal dikirim : File surat harus dilampirkan');
+                return redirect('/surat_keluar_baru')
+                    ->with('error', 'Surat gagal dikirim : File surat harus dilampirkan');
             }
 
-            $api_url = env('API_PTA_URL', '');
-            $id_satker = env('ID_SATKER', '-');
+            $api_url     = env('API_PTA_URL', '');
+            $id_satker   = env('ID_SATKER', '-');
             $nama_satker = env('NAMA_SATKER', '-');
-            $api_key = env('API_SURAT_PTA', '-');
+            $api_key     = env('API_SURAT_PTA', '-');
 
-            $filename = public_path("dok\keluar\\".$surat->file);
+            // Lokasi file:
+            // /var/www/surat-pa-public/dok/keluar/
+            $filename = base_path('../dok/keluar/' . $surat->file);
 
-            $response = Http::withHeaders([
-                'key'       => $api_key,
-                'id_satker' => $id_satker
-            ])
-            ->attach('file', fopen($filename, 'r'))
-            ->post($api_url.'api/surat_masuk_satker', [
-                'no_surat'       => $surat->nomor_surat,
-                'dari'           => $nama_satker,
-                'tgl_surat'      => $surat->tanggal_surat,
-                'keterangan'     => $surat->keterangan,
-                'id_klasifikasi' => $surat->id_klasifikasi,
-                'klasifikasi'    => $surat->klasifikasi,
-                'sifat_surat'    => $surat->sifat_surat,
-                'isi_ringkas'    => $surat->isi_ringkas,
-                'tahun_anggaran' => $surat->tahun_anggaran,
-            ])
-            ->json();
+            if (!file_exists($filename)) {
+                return redirect('/surat_keluar_baru')
+                    ->with(
+                        'error',
+                        'Surat gagal dikirim : File tidak ditemukan. Path: ' . $filename
+                    );
+            }
 
-            if ($response['success']) {
+            if (!is_readable($filename)) {
+                return redirect('/surat_keluar_baru')
+                    ->with(
+                        'error',
+                        'Surat gagal dikirim : File tidak dapat dibaca. Path: ' . $filename
+                    );
+            }
+
+            $endpoint = rtrim($api_url, '/') . '/api/surat_masuk_satker';
+
+            $response = Http::timeout(60)
+                ->connectTimeout(15)
+                ->withHeaders([
+                    'key'       => $api_key,
+                    'id_satker' => $id_satker
+                ])
+                ->attach(
+                    'file',
+                    fopen($filename, 'r'),
+                    basename($filename)
+                )
+                ->post($endpoint, [
+                    'no_surat'       => $surat->nomor_surat,
+                    'dari'           => $nama_satker,
+                    'tgl_surat'      => $surat->tanggal_surat,
+                    'keterangan'     => $surat->keterangan,
+                    'id_klasifikasi' => $surat->id_klasifikasi,
+                    'klasifikasi'    => $surat->klasifikasi,
+                    'sifat_surat'    => $surat->sifat_surat,
+                    'isi_ringkas'    => $surat->isi_ringkas,
+                    'tahun_anggaran' => $surat->tahun_anggaran,
+                ]);
+
+            /*
+            * API berhasil
+            */
+            if ($response->successful()) {
+
+                $body = $response->json();
+
                 if ($surat->sifat_surat < 3) {
-                    return redirect('/surat_keluar_baru')->with('status', 'Surat berhasil dikirim ke PTA');
+                    return redirect('/surat_keluar_baru')
+                        ->with('status', 'Surat berhasil dikirim ke PTA');
                 } else {
-                    return redirect('/surat_keluar_rhs_baru')->with('status', 'Surat berhasil dikirim ke PTA');
-                }
-            } else {
-                if ($surat->sifat_surat < 3) {
-                    return redirect('/surat_keluar_baru')->with('error', 'Surat gagal dikirim ke PTA : ' . $response['message']);
-                } else {
-                    return redirect('/surat_keluar_rhs_baru')->with('error', 'Surat gagal dikirim ke PTA : ' . $response['message']);
+                    return redirect('/surat_keluar_rhs_baru')
+                        ->with('status', 'Surat berhasil dikirim ke PTA');
                 }
             }
-        } catch (\Exception $ex) {
-            // dd($ex->getMessage());
-            return redirect('/surat_keluar_baru')->with('error', 'Surat gagal dikirim ke PTA');
-        }    
-}
+
+            /*
+            * API gagal
+            */
+            $body = $response->json();
+
+            $message = data_get($body, 'message');
+
+            if (!$message) {
+                $message = $response->body();
+            }
+
+            if ($surat->sifat_surat < 3) {
+                return redirect('/surat_keluar_baru')
+                    ->with(
+                        'error',
+                        'Surat gagal dikirim ke PTA : HTTP '
+                        . $response->status()
+                        . ' - '
+                        . $message
+                    );
+            } else {
+                return redirect('/surat_keluar_rhs_baru')
+                    ->with(
+                        'error',
+                        'Surat gagal dikirim ke PTA : HTTP '
+                        . $response->status()
+                        . ' - '
+                        . $message
+                    );
+            }
+
+        } catch (\Throwable $ex) {
+
+            \Log::error('Gagal kirim surat ke PTA', [
+                'message' => $ex->getMessage(),
+                'file'    => $ex->getFile(),
+                'line'    => $ex->getLine(),
+            ]);
+
+            return redirect('/surat_keluar_baru')
+                ->with(
+                    'error',
+                    'Surat gagal dikirim ke PTA : ' . $ex->getMessage()
+                );
+        }
+    }
 
     public function lacak_surat_pta($enc_id) {
         $id = $this->enc_helper->decrypt($enc_id);
