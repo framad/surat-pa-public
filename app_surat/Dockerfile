@@ -28,6 +28,10 @@ RUN apt-get update && apt-get install -y \
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-WORKDIR /var/www
+COPY docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
 
-CMD ["php-fpm", "-F"]
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+WORKDIR /var/www/app_surat
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
