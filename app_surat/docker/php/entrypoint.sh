@@ -11,12 +11,20 @@ mkdir -p \
     storage/framework/cache \
     storage/framework/sessions \
     storage/framework/views \
-    bootstrap/cache
+    bootstrap/cache \
+    /var/www/dok/keluar
 
 chown -R www-data:www-data storage bootstrap/cache
 
 find storage bootstrap/cache -type d -exec chmod 775 {} \;
 find storage bootstrap/cache -type f -exec chmod 664 {} \;
+
+echo "Setting upload directory permissions..."
+
+chown -R www-data:www-data /var/www/dok
+
+find /var/www/dok -type d -exec chmod 775 {} \;
+find /var/www/dok -type f -exec chmod 664 {} \;
 
 if [ ! -f "vendor/autoload.php" ]; then
     echo "vendor belum ada, menjalankan composer install..."
